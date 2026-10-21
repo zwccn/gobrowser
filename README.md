@@ -20,51 +20,31 @@ gobrowser.New(gobrowser.Config{Title: "报表中心"}).Show()
 
 
 
-## 安装与发布
-
-### 装（用别人发布的版本）
+## 安装
 
 ```bash
 go get github.com/zwccn/gobrowser
 ```
 
-> 换仓库地址（fork 或迁到 Gitee）时，用一条命令改完全部引用：
+### ⚠️ 运行时不在 Go 模块里
 
-```bash
-go run ./tools/setmodule -m github.com/你的账号/gobrowser
-# 或 gitee.com/你的账号/gobrowser
+`go get` 只拿到 SDK（约 200 KB）。真正画窗口的是一份加固 Electron 运行时（约 180 MB），
+必须放在程序**同级**的 `runtime\`：
+
+```
+你的程序\
+├── 你的程序.exe
+├── runtime\                    ← 渲染层，必须完整
+│   ├── gobrowser.exe           ← 渲染进程（Go 程序是它的父进程）
+│   ├── electron.sign
+│   ├── lic\
+│   └── resources\app.asar      ← 底座代码，19 KB
+└── web\                        ← 你的页面
 ```
 
-### 发布到 Go 模块代理（pkg.go.dev）
+缺任何一项都会**直接报错并说明缺哪个文件**（写日志 + 弹原生窗口），不会白屏。
 
-Go 的"库中心"就是模块代理，**不需要注册、不需要上传**：
-
-```bash
-git init && git add . && git commit -m "gobrowser v0.1.0"
-git remote add origin git@github.com:你的账号/gobrowser.git
-git push -u origin main
-
-git tag v0.1.0        # 语义化版本，必须有 v 前缀
-git push --tags
-```
-
-推完 tag 后：
-
-| 生效位置 | 说明 |
-|---|---|
-| `go get github.com/你的账号/gobrowser@v0.1.0` | 几分钟内可用（proxy.golang.org 自动抓取） |
-| https://pkg.go.dev/github.com/你的账号/gobrowser | 文档页自动生成（约 10 分钟） |
-| 国内加速 | `GOPROXY=https://goproxy.cn,direct` |
-
-要点：**仓库必须公开**（私有仓库要 `GOPRIVATE=你的域名` 走直连）；tag 用 `v0.1.0` 这种格式；`go.mod` 里的 module 路径必须与仓库地址一致。
-
-### ⚠️ runtime 不在 Go 模块里
-
-`go get` 只拿到 SDK（几百 KB）。**Electron 运行时（约 180 MB）要单独分发**：
-
-- 发布到 GitHub Releases：`gobrowser-runtime-v16.0.9-win32-x64.zip` 等
-- 用户下载后解到程序同级 `runtime\`，或自己打单文件（`-single`）
-- SDK 找不到 runtime 时会明确报错（写日志 + 弹原生框），不会白屏
+想做成"一个 exe 搞定"，用 `-single` 形态把运行时追加到自己 exe 尾部，首次运行自动释放到用户缓存。
 
 ---
 
@@ -326,3 +306,7 @@ window.webshell.on(event, handler)
 - 多显示器定位 / 托盘气泡 / 开机自启
 - Linux 实机回归（托盘依赖 libappindicator；`chrome-sandbox` 需要 4755）
 - go-winres 图标（本机未安装，build 会提示而不是失败）
+
+---
+
+<sub>改模块路径、发版、运行时打包这些维护动作见 [MAINTAINING.md](MAINTAINING.md)。</sub>
