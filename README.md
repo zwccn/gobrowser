@@ -13,10 +13,12 @@ import "github.com/zwccn/gobrowser"
 gobrowser.New(gobrowser.Config{Title: "报表中心"}).Show()
 ```
 
-- 窗口由底层 Electron 进程托管，**官方加固包一个字节都没改**（只新增一个 19 KB 的 `app.asar`）
+- 窗口由底层 Electron 运行时托管，**运行时一个字节都没改**（只新增一个 19 KB 的 `app.asar`）
 - 页面就是你熟悉的网页：目录、`embed.FS`、或已有的 HTTP 服务
 - 窗口控制走本地 HTTP（Go 侧）/ preload 桥（页面侧），两种语言都不用碰 Electron
 - 支持 Windows x64/x86、Linux x64/arm64/loong64/mips64el
+
+> 设计细节见 [架构方案](docs/架构方案.md)，接入细节见 [开发者指南](docs/开发者指南.md)。
 
 
 
@@ -112,7 +114,7 @@ w.Maximize()
 _ = app.Wait()
 ```
 
-**开发者不写 app.json**：`Config` 会被落成一份临时 app.json（`%TEMP%\webshell-<appId>.app.json`）。
+**开发者不写 app.json**：`Config` 会被落成一份临时 app.json（`%TEMP%\gobrowser-<appId>.app.json`）。
 需要完全掌控时用 `shell.NewFromFile("app.json")` 走底层模式（见 §3）。
 
 > ⚠️ 窗口属于外层 `gobrowser.exe` 进程，不属于你的 Go 进程 —— 用任务管理器/EnumWindows 按 Go 进程找窗口是找不到的。
@@ -148,7 +150,7 @@ gobrowser/
 ## 2. 三步跑起来
 
 ```bash
-# ① 组装运行时（把官方加固 dist 变成 WebShell runtime）
+# ① 组装运行时（把官方加固 dist 变成 gobrowser runtime）
 go run ./tools/pack -dist <electron dist> -out C:\tmp_ws\runtime -app ./app
 
 # ② 体检
@@ -212,13 +214,13 @@ go run ./tools/build -targets win-x64 -single -zips C://aitools//00.360易创 -o
 | `linux-loong64` | linux/loong64 | `electron-v16.0.9-linux-loong64.zip` | `gobrowser` |
 | `linux-mips64el` | linux/mips64le | `electron-v16.0.9-linux-mips64el.zip` | `gobrowser` |
 
-解压后自动做两件事：`electron(.exe)` → `webshell(.exe)`，把底座 `app.asar` 注入 `resources\`。
+解压后自动做两件事：`electron(.exe)` → `gobrowser(.exe)`，把底座 `app.asar` 注入 `resources\`。
 工具也支持 `-runtime-dir`（本机平台直接复制现成 runtime，不必再解压）。
 
 ### 运行期从哪拿 runtime（按顺序）
 
 1. **同级 `runtime\`**（`..\runtime` 然后 `.\runtime`，`preferBundled` 可调换）
-2. **exe 内载荷**：解压到 `%LOCALAPPDATA%\webshell\<appId>\runtime-<sha12>\`（Linux: `~/.cache/webshell/...`）
+2. **exe 内载荷**：解压到 `%LOCALAPPDATA%\gobrowser\<appId>\runtime-<sha12>\`（Linux: `~/.cache/gobrowser/...`）
 3. 都没有 → 报错（GUI 程序会弹原生框 + 写日志）
 
 载荷格式（`internal/payloadfmt`）：
@@ -272,7 +274,7 @@ trailer = magic "WSPAYLD1"(8) | version(4) | offset(8) | size(8) | sha256前8字
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | 双击先弹黑窗 | Go 默认 console 子系统 | `-ldflags "-H windowsgui"`（build 工具默认加） |
-| 无控制台后错误看不见 | GUI 程序没有 stdout | `gobrowser.Fatal()`：写 `%LOCALAPPDATA%\<appId>\logs\shell.log` + 原生 MessageBoxW；`WEBSHELL_SILENT=1` 可跳过弹框（CI 用） |
+| 无控制台后错误看不见 | GUI 程序没有 stdout | `gobrowser.Fatal()`：写 `%LOCALAPPDATA%\<appId>\logs\shell.log` + 原生 MessageBoxW；`GOBROWSER_SILENT=1` 可跳过弹框（CI 用） |
 | `Lock file can not be created! Error code: 3` | 单实例锁要在 userData 里建锁文件，而 userData 目录还不存在 | 先 `mkdirSync` 再 `setPath('userData', …)` |
 | `sandbox:true` 页面加载失败 `ERR_FAILED(-2)` | 本运行时下 sandbox + 渲染进程起不来 | 固定 `sandbox:false` + `contextIsolation:true` |
 | `capturePage()` 返回 0×0 | 本 VM 的合成限制（重试/隐藏后截都无效） | 接口保留并返回可读错误，不当作验证手段 |
