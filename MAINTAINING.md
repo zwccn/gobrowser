@@ -96,16 +96,26 @@ curl -X POST --noproxy '*' -H "Authorization: token $TOKEN" \
 实测：`api.github.com` / `uploads.github.com` 都能直连；`github.com`（网页与 git）必须走 `127.0.0.1:7897`。
 上传速度约 620 KB/s，单包 2–3 分钟。断掉会留下 `state: starter` 的残包，需先 `DELETE /releases/assets/<aid>` 再重传。
 
-## 推送走代理
+## 网络：直连还是代理
 
-本机 `github.com:443` 直连不通，仓库已配置：
+本机到 GitHub 的连通性**会变**，两种状态都实测过，别写死：
 
 ```bash
-git config http.proxy http://127.0.0.1:7897
+# 先判断当前能不能直连（200 就是能）
+curl -s -o /dev/null -w "%{http_code}\n" --noproxy '*' \
+  "https://github.com/zwccn/gobrowser.git/info/refs?service=git-upload-pack"
 ```
 
-凭据走 Windows 凭据管理器（PortableGit 系统配置里已有 `credential.helper=manager`）。
-首次授权：
+| 状态 | 做法 |
+|---|---|
+| 直连 200 | 直接 `git push`，最快（1 秒级）。**不要**再配代理 |
+| 直连超时 | `git config http.proxy http://127.0.0.1:7897`，推完可 `git config --unset http.proxy` |
+
+注意：
+
+- `api.github.com`、`uploads.github.com` 基本都能直连；**大文件上传别走代理**（实测慢 2.5 倍，且可能卡在 `state: starter`）
+- 代理被占满时，`git push` 会报 `schannel: failed to receive handshake` —— 不是凭据问题，等带宽空出来或改直连
+- 凭据走 Windows 凭据管理器（PortableGit 系统配置里已有 `credential.helper=manager`），首次授权：
 
 ```bash
 env -u GIT_TERMINAL_PROMPT http_proxy=http://127.0.0.1:7897 https_proxy=http://127.0.0.1:7897 \
