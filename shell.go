@@ -1,4 +1,4 @@
-// Package shell 是 WebShell 的 Go 侧 SDK：
+// Package gobrowser 是 gobrowser 的 Go 侧 SDK：
 // 找到同级 runtime、拉起外壳进程、读握手、提供窗口控制 API。
 package gobrowser
 

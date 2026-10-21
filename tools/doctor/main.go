@@ -59,7 +59,7 @@ func main() {
 		GPU           string `json:"gpu"`
 		CloseToTray   bool   `json:"closeToTray"`
 	}{}
-	appID := "webshell"
+	appID := "gobrowser"
 	if b, err := os.ReadFile(cfgPath); err != nil {
 		if os.IsNotExist(err) {
 			add("i", "app.json", "没有（类库模式下由 Config 自动生成，正常）")
@@ -117,9 +117,9 @@ func main() {
 				}
 			}
 			if n == 0 {
-				add("!", "lic/", "目录存在但没有 .lic 授权文件")
+				add("!", "lic/", "目录存在但没有 .lic 文件")
 			} else {
-				add("✓", "lic/", "%d 个授权文件", n)
+				add("✓", "lic/", "%d 个 .lic 文件", n)
 			}
 		} else {
 			add("✗", "lic/", "目录缺失")
@@ -166,7 +166,7 @@ func main() {
 	}
 
 	// 输出
-	fmt.Println("WebShell doctor")
+	fmt.Println("gobrowser doctor")
 	fmt.Println("目录:", base)
 	fmt.Println(strings.Repeat("─", 68))
 	w := 0

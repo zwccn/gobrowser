@@ -13,7 +13,7 @@ func isWindows() bool { return runtime.GOOS == "windows" }
 // LogPath 返回某个 appId 的日志文件路径（自动按平台选目录）。
 func LogPath(appID string) string {
 	if appID == "" {
-		appID = "webshell"
+		appID = "gobrowser"
 	}
 	switch runtime.GOOS {
 	case "windows":
@@ -59,8 +59,10 @@ func Fatal(appID string, err error) {
 	}
 	p := LogPath(appID)
 	_ = AppendLog(appID, "FATAL "+err.Error())
-	fmt.Fprintf(os.Stderr, "[webshell] %v\n", err)
-	if os.Getenv("WEBSHELL_SILENT") == "" { // CI / 自动化里设 WEBSHELL_SILENT=1 可跳过弹框
-		showErrorBox("WebShell 启动失败", fmt.Sprintf("%v\n\n日志: %s", err, p))
+	fmt.Fprintf(os.Stderr, "[gobrowser] %v\n", err)
+	// GOBROWSER_SILENT=1 跳过弹框（CI / 自动化）；WEBSHELL_SILENT 是改名前的名字，继续兼容。
+	silent := os.Getenv("GOBROWSER_SILENT") != "" || os.Getenv("WEBSHELL_SILENT") != ""
+	if !silent {
+		showErrorBox("gobrowser 启动失败", fmt.Sprintf("%v\n\n日志: %s", err, p))
 	}
 }

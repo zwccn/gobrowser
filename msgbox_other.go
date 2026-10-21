@@ -26,7 +26,7 @@ func showErrorBox(title, text string) {
 		}
 	}
 	if cmd == nil {
-		fmt.Fprintf(os.Stderr, "[webshell] %s: %s\n", title, text)
+		fmt.Fprintf(os.Stderr, "[gobrowser] %s: %s\n", title, text)
 		return
 	}
 	_ = cmd.Start()

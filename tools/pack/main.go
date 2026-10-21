@@ -1,8 +1,8 @@
-// pack：把一份官方（加固版）Electron dist 变成 WebShell 运行时目录。
+// pack：把一份官方（加固版）Electron dist 变成 gobrowser 运行时目录。
 //
 //  1. 整份拷贝到 -out
 //
-//  2. electron(.exe) 改名为 webshell(.exe) —— 只改名，不动一个字节
+//  2. electron(.exe) 改名为 gobrowser(.exe) —— 只改名，不动一个字节
 //
 //  3. 把底座 JS（-app）打成 resources/app.asar
 //

@@ -1,4 +1,4 @@
-// 示例：一个最小的 Go 业务程序，用 WebShell 显示窗口。
+// 示例：一个最小的 Go 业务程序，用 gobrowser 显示窗口。
 //
 //	go run ./cmd/demo -hold=3s          # 开发态（有控制台，能看到日志）
 //	demo.exe                            # 发布态（GUI 子系统，无控制台，日志写文件）
@@ -136,13 +136,13 @@ func main() {
 func peekAppID(cfgPath string) string {
 	b, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return "webshell"
+		return "gobrowser"
 	}
 	var h struct {
 		AppID string `json:"appId"`
 	}
 	if json.Unmarshal(b, &h) != nil || h.AppID == "" {
-		return "webshell"
+		return "gobrowser"
 	}
 	return h.AppID
 }

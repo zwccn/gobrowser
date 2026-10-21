@@ -293,7 +293,7 @@ func (s *Shell) writeTempAppJSON() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	p := filepath.Join(os.TempDir(), "webshell-"+sanitize(s.cfg.AppID)+".app.json")
+	p := filepath.Join(os.TempDir(), "gobrowser-"+sanitize(s.cfg.AppID)+".app.json")
 	if err := os.WriteFile(p, b, 0o644); err != nil {
 		return "", err
 	}
@@ -351,7 +351,7 @@ code{color:#7fd1ff;font-family:Consolas,monospace}
 </style>
 <div class="card">
   <h1>` + title + `</h1>
-  <p>这是 WebShell 的内置欢迎页 —— 说明窗口已经由底座托管</p>
+  <p>这是 gobrowser 的内置欢迎页 —— 说明窗口已经由底座托管</p>
   <p class="ok" id="s">检测桥接中…</p>
   <p>下一步：<code>ShowDir("./web")</code> 或 <code>ShowFS(embedFS)</code> 换成你自己的页面</p>
 </div>

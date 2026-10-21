@@ -61,7 +61,7 @@ func main() {
 		*appJSON = filepath.Join(*appdir, filepath.FromSlash(*pkg), "app.json")
 	}
 	ver := appVersion(*appJSON)
-	fmt.Println("WebShell build ·", *name, "v"+ver)
+	fmt.Println("gobrowser build ·", *name, "v"+ver)
 
 	var done []string
 	for _, raw := range strings.Split(*tgts, ",") {
@@ -185,7 +185,7 @@ func prepareRuntimeDir(dst, runtimeDir, zips, shellJS string, t target) error {
 	}
 }
 
-// unpackRuntime 解压官方 electron zip → 改名 electron→webshell → 塞底座 asar。
+// unpackRuntime 解压官方 electron zip → 改名 electron→gobrowser → 塞底座 asar。
 func unpackRuntime(zipPath, dst, shellJS string) error {
 	r, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -221,7 +221,7 @@ func unpackRuntime(zipPath, dst, shellJS string) error {
 		}
 	}
 
-	// 改名：electron / electron.exe → webshell / webshell.exe（zip 里没有扩展名的就是 Linux）
+	// 改名：electron / electron.exe → gobrowser / gobrowser.exe（zip 里没有扩展名的就是 Linux）
 	for _, name := range []string{"electron", "electron.exe"} {
 		old := filepath.Join(dst, name)
 		if _, err := os.Stat(old); err == nil {
@@ -273,7 +273,7 @@ func appVersion(p string) string {
 }
 
 func writeISS(path, name, ver, dirName string) error {
-	body := fmt.Sprintf(`; 由 webshell build -iss 生成，用 Inno Setup 6 打开编译
+	body := fmt.Sprintf(`; 由 gobrowser build -iss 生成，用 Inno Setup 6 打开编译
 #define MyAppName "%[1]s"
 #define MyAppVersion "%[2]s"
 #define MyAppExeName "%[1]s.exe"

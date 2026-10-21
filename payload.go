@@ -89,7 +89,7 @@ func (p *Payload) Extract(dst string) error {
 		if err != nil {
 			return err
 		}
-		_ = os.Chmod(target, zf.Mode()) // 保留可执行位（Linux 的 webshell/chrome-sandbox 需要）
+		_ = os.Chmod(target, zf.Mode()) // 保留可执行位（Linux 的 gobrowser/chrome-sandbox 需要）
 	}
 	return nil
 }
@@ -101,7 +101,7 @@ func (p *Payload) Extract(dst string) error {
 //  3. 都没有 → 返回 ErrNoPayload / 其它错误
 func PrepareRuntime(appID string) (string, error) {
 	if appID == "" {
-		appID = "webshell"
+		appID = "gobrowser"
 	}
 	if exe, err := os.Executable(); err == nil {
 		if _, err := FindRuntimeAt(filepath.Dir(exe), true); err == nil {
@@ -138,13 +138,13 @@ func PrepareRuntime(appID string) (string, error) {
 func runtimeCacheRoot(appID string) string {
 	if isWindows() {
 		if v := os.Getenv("LOCALAPPDATA"); v != "" {
-			return filepath.Join(v, "webshell", appID)
+			return filepath.Join(v, "gobrowser", appID)
 		}
 	}
 	if v, err := os.UserCacheDir(); err == nil {
-		return filepath.Join(v, "webshell", appID)
+		return filepath.Join(v, "gobrowser", appID)
 	}
-	return filepath.Join(os.TempDir(), "webshell", appID)
+	return filepath.Join(os.TempDir(), "gobrowser", appID)
 }
 
 func pathWithin(root, target string) bool {

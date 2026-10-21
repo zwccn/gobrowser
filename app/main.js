@@ -1,6 +1,6 @@
 'use strict'
 /**
- * WebShell 底座（运行在 Electron 主进程里，被打包成 resources/app.asar）
+ * gobrowser 底座（运行在 Electron 主进程里，被打包成 resources/app.asar）
  *
  * 职责：
  *   1. 读 --app=<app.json>
@@ -33,7 +33,7 @@ try {
   fatal('读取 app.json 失败: ' + e.message)
 }
 
-const appId = cfg.appId || 'com.webshell.app'
+const appId = cfg.appId || 'com.gobrowser.app'
 const appName = cfg.name || appId
 const token = crypto.randomBytes(16).toString('hex')
 const eventsUrl = arg('events', '')
@@ -83,12 +83,12 @@ function loadIcon (rel) {
 }
 
 function fatal (msg) {
-  try { process.stderr.write('[webshell] ' + msg + '\n') } catch (_) {}
+  try { process.stderr.write('[gobrowser] ' + msg + '\n') } catch (_) {}
   process.exit(2)
 }
 
 function log (msg) {
-  if (cfg.verbose) process.stderr.write('[webshell] ' + msg + '\n')
+  if (cfg.verbose) process.stderr.write('[gobrowser] ' + msg + '\n')
 }
 
 // ------------------------------------------------------------------ 事件上报（外壳 -> Go）

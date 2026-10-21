@@ -10,7 +10,7 @@ import (
 // RuntimeInfo 描述一份被选中的运行时。
 type RuntimeInfo struct {
 	Dir        string // runtime 目录
-	Exe        string // webshell(.exe) 全路径
+	Exe        string // gobrowser(.exe) 全路径
 	Version    string // 来自 runtime/version 文件
 	Electron   string // 来自握手，如 16.0.9
 	Browser360 string // 来自握手，如 10.6.1001.11
@@ -80,7 +80,7 @@ func Probe(dir string) (RuntimeInfo, []string) {
 	}
 	var missing []string
 	exe := ""
-	for _, name := range []string{"gobrowser" + platExt(), "webshell" + platExt(), "electron" + platExt()} {
+	for _, name := range []string{"gobrowser" + platExt(), "electron" + platExt()} {
 		p := filepath.Join(dir, name)
 		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
 			exe = p
