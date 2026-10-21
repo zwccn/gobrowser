@@ -28,10 +28,30 @@ gobrowser.New(gobrowser.Config{Title: "报表中心"}).Show()
 go get github.com/zwccn/gobrowser
 ```
 
-### ⚠️ 运行时不在 Go 模块里
+### 运行时不在 Go 模块里（但不用手动折腾）
 
-`go get` 只拿到 SDK（约 200 KB）。真正画窗口的是一份加固 Electron 运行时（约 180 MB），
-必须放在程序**同级**的 `runtime\`。从 [Releases](https://github.com/zwccn/gobrowser/releases/tag/runtime-v16.0.9) 下载对应平台的包，解压进去：
+`go get` 只拿到 SDK（约 200 KB）。真正画窗口的是一份 Electron 运行时（80–105 MB）。
+三种拿法，任选：
+
+| 场景 | 做法 |
+|---|---|
+| **开发（推荐，零手动）** | 什么都不用做。`go run .` 发现没有运行时，会自动下载到 `%LOCALAPPDATA%\gobrowser\runtimes\`，同一台机器只下一次 |
+| **打包** | `go run ./tools/build -targets win-x64 -bundle bundled -fetch …` —— 自动下载并塞进发行目录 |
+| **离线 / 手动** | 从 [Releases](https://github.com/zwccn/gobrowser/releases/tag/runtime-v16.0.9) 下对应平台 zip，解压成程序同级的 `runtime\` |
+
+自动获取只发生在 `go run`（或你显式设了 `GOBROWSER_AUTO_FETCH=1`）；
+**`go build` 出来的程序永远不会自己联网下载**，缺运行时就是报错，部署行为不变。
+
+国内网络 / 企业内网 / 离线机器：
+
+```bash
+GOBROWSER_RUNTIME_BASE=https://你的镜像/       # 换下载源
+GOBROWSER_RUNTIME_DIR=D:\shared\runtime-zips   # 直接读本地 zip 目录，完全不联网
+GOBROWSER_RUNTIME_CACHE=D:\cache               # 换缓存位置
+GOBROWSER_AUTO_FETCH=0                         # 彻底关闭自动获取
+```
+
+手动下载时，对应关系：
 
 | 你编译的目标 | 下载 |
 |---|---|
@@ -160,6 +180,9 @@ go run ./tools/doctor -dir C:\tmp_ws
 
 # ③ 打包（GUI 子系统，双击不弹控制台）
 go run ./tools/build -targets win-x64 -bundle bundled -runtime-dir C:\tmp_ws\runtime -out C:\tmp_ws\dist -iss
+
+# 不想管运行时？加 -fetch，自动下载对应平台的运行时再组装
+go run ./tools/build -targets win-x64,linux-arm64 -bundle bundled -fetch -out dist
 ```
 
 产物：

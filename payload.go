@@ -98,7 +98,8 @@ func (p *Payload) Extract(dst string) error {
 //
 //  1. exe 同级已有完整 runtime → 返回 ""，让 Start 走默认发现逻辑
 //  2. exe 里带了载荷 → 首次解压到用户缓存目录，之后按摘要复用
-//  3. 都没有 → 返回 ErrNoPayload / 其它错误
+//  3. 都没有时：开发态（go run）或 GOBROWSER_AUTO_FETCH=1 → 从发布地址下载到缓存
+//  4. 仍拿不到 → 返回 ErrNoPayload / 其它错误
 func PrepareRuntime(appID string) (string, error) {
 	if appID == "" {
 		appID = "gobrowser"
@@ -111,6 +112,11 @@ func PrepareRuntime(appID string) (string, error) {
 
 	p, err := SelfPayload()
 	if err != nil {
+		// 既没有同级 runtime，也没有 exe 内载荷：开发态（或显式开启）时联网获取。
+		// 生产构建不会走到这里下载，除非用户自己设了 GOBROWSER_AUTO_FETCH=1。
+		if autoFetchEnabled() {
+			return fetchRuntime()
+		}
 		return "", err
 	}
 

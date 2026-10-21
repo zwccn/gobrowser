@@ -1,0 +1,37 @@
+{
+  "version": "v16.0.9",
+  "release": "runtime-v16.0.9",
+  "base": "https://github.com/zwccn/gobrowser/releases/download/runtime-v16.0.9/",
+  "platforms": {
+    "windows/amd64": {
+      "file": "gobrowser-runtime-v16.0.9-win32-x64.zip",
+      "size": 82193261,
+      "sha256": "e918bc5d588d0a2b9303ab622404a0a3f32f5c3574902b6855bf36c403fdf886"
+    },
+    "windows/386": {
+      "file": "gobrowser-runtime-v16.0.9-win32-ia32.zip",
+      "size": 76991252,
+      "sha256": "4c7d6f5be087b6245e53fcafee592f08b50209e7a2455dbbc95c66f1f1497511"
+    },
+    "linux/amd64": {
+      "file": "gobrowser-runtime-v16.0.9-linux-x64.zip",
+      "size": 99661426,
+      "sha256": "a864435e3d15e3e197f6c0bee610adbdbb3f6885bc7a702ad325e9e60687c279"
+    },
+    "linux/arm64": {
+      "file": "gobrowser-runtime-v16.0.9-linux-arm64.zip",
+      "size": 105705392,
+      "sha256": "ce93145fa89d3b1cbaf699051775e288c4cd990cd00dacb81891b8b829b3cffd"
+    },
+    "linux/loong64": {
+      "file": "gobrowser-runtime-v16.0.9-linux-loong64.zip",
+      "size": 92134963,
+      "sha256": "f8e4dedd19149700717df5d577c6e171dabbc9f631a056c8a3139717fb113fbe"
+    },
+    "linux/mips64le": {
+      "file": "gobrowser-runtime-v16.0.9-linux-mips64el.zip",
+      "size": 109869588,
+      "sha256": "c3df07e58a5100b5b67881bc33c7d649cbc5a95d1682d75ebd2afcc074d4fc6f"
+    }
+  }
+}

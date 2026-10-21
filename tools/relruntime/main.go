@@ -10,6 +10,9 @@ package main
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -36,6 +39,17 @@ type result struct {
 	platform string
 	file     string
 	size     int64
+	sha256   string
+}
+
+// 官方平台名 → 清单里的 GOOS/GOARCH 键
+var platformKeys = map[string]string{
+	"win32-x64":      "windows/amd64",
+	"win32-ia32":     "windows/386",
+	"linux-x64":      "linux/amd64",
+	"linux-arm64":    "linux/arm64",
+	"linux-loong64":  "linux/loong64",
+	"linux-mips64el": "linux/mips64le",
 }
 
 func main() {
@@ -45,6 +59,8 @@ func main() {
 	version := flag.String("version", "v16.0.9", "运行时版本（用于文件名）")
 	platforms := flag.String("platforms", strings.Join(known, ","), "要打包的平台，逗号分隔")
 	dryRun := flag.Bool("n", false, "只检查，不写文件")
+	manifestPath := flag.String("manifest", "", "同时生成运行时清单（SDK 自动获取用），通常指向 internal/runtimefetch/runtime-manifest.json")
+	baseURL := flag.String("base", "", "清单里的下载前缀；默认 GitHub Release 地址")
 	flag.Parse()
 
 	if *zips == "" {
@@ -75,17 +91,75 @@ func main() {
 		if err != nil {
 			fail(p + ": " + err.Error())
 		}
-		done = append(done, result{p, dst, n})
+		sum, _ := fileSHA256(dst)
+		done = append(done, result{p, dst, n, sum})
 		fmt.Printf("  ✓ %-16s %6.1f MB  %s\n", p, float64(n)/1048576, filepath.Base(dst))
 	}
 
 	if *dryRun {
 		return
 	}
+	if *manifestPath != "" {
+		if err := writeManifest(*manifestPath, *version, *baseURL, done); err != nil {
+			fail("生成清单失败: " + err.Error())
+		}
+		fmt.Printf("  ✓ 清单已更新 %s\n", *manifestPath)
+	}
 	fmt.Println()
 	for _, d := range done {
 		fmt.Printf("%-16s %s\n", d.platform, d.file)
 	}
+}
+
+// writeManifest 生成 SDK 用的运行时清单（含 size 与 sha256）。
+func writeManifest(path, version, base string, rs []result) error {
+	if base == "" {
+		base = fmt.Sprintf("https://github.com/zwccn/gobrowser/releases/download/runtime-%s/", version)
+	}
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+	type entry struct {
+		File   string `json:"file"`
+		Size   int64  `json:"size"`
+		SHA256 string `json:"sha256"`
+	}
+	m := struct {
+		Version   string           `json:"version"`
+		Release   string           `json:"release"`
+		Base      string           `json:"base"`
+		Platforms map[string]entry `json:"platforms"`
+	}{
+		Version:   version,
+		Release:   "runtime-" + version,
+		Base:      base,
+		Platforms: map[string]entry{},
+	}
+	for _, r := range rs {
+		key, ok := platformKeys[r.platform]
+		if !ok {
+			return fmt.Errorf("未知平台 %s", r.platform)
+		}
+		m.Platforms[key] = entry{File: filepath.Base(r.file), Size: r.size, SHA256: r.sha256}
+	}
+	b, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(b, '\n'), 0o644)
+}
+
+func fileSHA256(p string) (string, error) {
+	f, err := os.Open(p)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func buildOne(srcZip, dstZip, appDir string) (int64, error) {

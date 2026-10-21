@@ -22,6 +22,7 @@ import (
 
 	"github.com/zwccn/gobrowser/internal/asar"
 	"github.com/zwccn/gobrowser/internal/payloadfmt"
+	"github.com/zwccn/gobrowser/internal/runtimefetch"
 )
 
 type target struct {
@@ -55,6 +56,7 @@ func main() {
 	out := flag.String("out", "dist", "输出目录")
 	mkISS := flag.Bool("iss", false, "额外生成 Inno Setup 脚本")
 	single := flag.Bool("single", false, "单文件模式：把 runtime 压成 zip 追加到 exe 尾部（首次运行自动释放）")
+	fetch := flag.Bool("fetch", false, "没有现成 runtime 时，从发布地址自动下载（GOBROWSER_RUNTIME_BASE 可换镜像，GOBROWSER_RUNTIME_DIR 可指向本地目录）")
 	flag.Parse()
 
 	if *appJSON == "" {
@@ -69,7 +71,7 @@ func main() {
 		if !ok {
 			fail("不支持的目标 %q（可用: %s）", raw, strings.Join(keys(), ", "))
 		}
-		if err := buildOne(*appdir, *pkg, *name, *appJSON, *shellJS, *out, *bundle, *runtimeDir, *zips, *icon, ver, *single, t); err != nil {
+		if err := buildOne(*appdir, *pkg, *name, *appJSON, *shellJS, *out, *bundle, *runtimeDir, *zips, *icon, ver, *single, *fetch, t); err != nil {
 			fail("%s: %v", t.name, err)
 		}
 		done = append(done, t.name)
@@ -85,7 +87,7 @@ func main() {
 	fmt.Println("\n完成:", strings.Join(done, ", "))
 }
 
-func buildOne(appdir, pkg, name, appJSON, shellJS, out, bundle, runtimeDir, zips, icon, ver string, single bool, t target) error {
+func buildOne(appdir, pkg, name, appJSON, shellJS, out, bundle, runtimeDir, zips, icon, ver string, single, fetch bool, t target) error {
 	dir := filepath.Join(out, t.name)
 	if err := os.RemoveAll(dir); err != nil {
 		return err
@@ -134,7 +136,7 @@ func buildOne(appdir, pkg, name, appJSON, shellJS, out, bundle, runtimeDir, zips
 		tmp := filepath.Join(os.TempDir(), "ws-payload-"+t.name)
 		_ = os.RemoveAll(tmp)
 		defer os.RemoveAll(tmp)
-		if err := prepareRuntimeDir(tmp, runtimeDir, zips, shellJS, t); err != nil {
+		if err := prepareRuntimeDir(tmp, runtimeDir, zips, shellJS, t, fetch); err != nil {
 			return err
 		}
 		payloadZip := tmp + ".zip"
@@ -152,7 +154,7 @@ func buildOne(appdir, pkg, name, appJSON, shellJS, out, bundle, runtimeDir, zips
 		}
 	} else if bundle == "bundled" {
 		rtDir := filepath.Join(dir, "runtime")
-		if err := prepareRuntimeDir(rtDir, runtimeDir, zips, shellJS, t); err != nil {
+		if err := prepareRuntimeDir(rtDir, runtimeDir, zips, shellJS, t, fetch); err != nil {
 			return err
 		}
 		fmt.Printf("  ✓ %-14s runtime 就位\n", t.name)
@@ -169,8 +171,13 @@ func buildOne(appdir, pkg, name, appJSON, shellJS, out, bundle, runtimeDir, zips
 	return nil
 }
 
-// prepareRuntimeDir 按目标平台准备一份 runtime 目录（复制或解压官方 zip）。
-func prepareRuntimeDir(dst, runtimeDir, zips, shellJS string, t target) error {
+// prepareRuntimeDir 按目标平台准备一份 runtime 目录。
+//
+// 三种来源，按优先级：
+//  1. -runtime-dir：本机现成的 runtime 目录（最快）
+//  2. -zips：官方 electron zip 目录（会改名 + 注入 app.asar）
+//  3. -fetch：从发布地址下载"已组装好的" runtime zip（命中缓存后不再联网）
+func prepareRuntimeDir(dst, runtimeDir, zips, shellJS string, t target, fetch bool) error {
 	fromLocal := runtimeDir != "" && t.goos == runtime.GOOS && t.goarch == runtime.GOARCH
 	switch {
 	case fromLocal:
@@ -181,8 +188,20 @@ func prepareRuntimeDir(dst, runtimeDir, zips, shellJS string, t target) error {
 			return fmt.Errorf("找不到 %s（可用 -runtime-dir 指定本机平台目录）", z)
 		}
 		return unpackRuntime(z, dst, shellJS)
+	case fetch:
+		dir, err := runtimefetch.Ensure(t.goos, t.goarch, runtimefetch.Options{
+			BaseURL:  os.Getenv("GOBROWSER_RUNTIME_BASE"),
+			LocalDir: os.Getenv("GOBROWSER_RUNTIME_DIR"),
+			Logf: func(format string, args ...any) {
+				fmt.Printf("  · %-14s "+format+"\n", append([]any{t.name}, args...)...)
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("自动获取运行时失败: %w", err)
+		}
+		return copyDir(dir, dst)
 	default:
-		return fmt.Errorf("需要 -runtime-dir（本机平台）或 -zips（任意平台）")
+		return fmt.Errorf("需要 -runtime-dir（本机平台）、-zips（官方 zip 目录）或 -fetch（自动下载）之一")
 	}
 }
 

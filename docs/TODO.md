@@ -38,6 +38,8 @@
 
 ## P1 · 文档维护与完整度
 
+- [ ] **[发布]** CI 出预组装包：tag 时 Actions 先取运行时再 build，上传 `gobrowser-<platform>-vX.zip`（exe + runtime），客户下一个包就能用
+- [ ] **[代码]** 运行期 `fetch` 形态（可选）：`app.json` 里配 `runtime.fetch`/URL，客户机器首次启动下载；默认关，需在文档写清内网/离线风险
 - [ ] `docs/README.md`：文档地图（谁看哪份、哪份权威、状态图例）
 - [ ] `docs/api.md`：Go 方法表 + HTTP 端点表全量对照（带 ✔/🚧/✗）
 - [ ] 事件与错误码表（退出码 2、401 invalid token、握手超时、缺 DLL `0xc0000135`）
@@ -62,6 +64,9 @@
 
 ## 已完成（2026-10-21）
 
+- [x] 运行时自动获取：`go run .` 缺运行时自动下载到用户缓存（`internal/runtimefetch`，含清单/校验/解压/缓存 + 5 个单测）；生产构建不联网，靠 `debug.ReadBuildInfo` 区分 go run
+- [x] `tools/build -fetch`：一条命令下载并组装 `bundled` 包；镜像/离线走 `GOBROWSER_RUNTIME_BASE` / `GOBROWSER_RUNTIME_DIR` / `GOBROWSER_RUNTIME_CACHE`
+- [x] `tools/relruntime -manifest`：打完运行时 zip 顺手把清单（size/sha256）写回 `internal/runtimefetch/`，发版流程闭环，避免手工同步漏掉
 - [x] 配置文件按程序名命名：`<程序名>.app.json` 优先、`app.json` 兜底 —— 多产品共用一个统一目录不再互相覆盖（新增 `appjson.go` + 单测，`tools/build` / `cmd/demo` / `tools/doctor` 已接入）
 - [x] 命名统一 `webshell` → `gobrowser`（代码文案/路径/包注释 + 文档）
 - [x] 两份文档入库 `docs/`，README 加文档入口

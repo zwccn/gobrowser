@@ -76,6 +76,24 @@ go run ./tools/relruntime \
 
 加 `-n` 只检查不写文件。单平台约 12 秒。
 
+### 发布新 runtime 时同步清单（必须）
+
+SDK 的自动获取靠 `internal/runtimefetch/runtime-manifest.json`（版本 / 文件名 / 大小 / sha256）。
+**换了 runtime 一定要重新生成清单**，否则自动获取会因校验失败而拒绝解压：
+
+```bash
+go run ./tools/relruntime \
+  -zips C://aitools//00.360易创 -app ./app -out dist/release \
+  -version v16.0.9 -platforms win32-x64,win32-ia32,linux-x64,linux-arm64,linux-loong64,linux-mips64el \
+  -manifest internal/runtimefetch/runtime-manifest.json
+```
+
+要点：
+
+- 清单里的 sha256 必须对应**最终上传到 Release 的那个 zip**；同一个版本的 zip 不要重复打包覆盖（字节一变，已发布客户端的校验就会失败）
+- 本地改了 `app/` 之后重打包只用于自测，别拿本地产物去更新线上清单
+- `-base` 可改下载前缀（比如换成自己的镜像）
+
 > 与 `tools/pack` 的分工：`pack` 处理"本机已有的 dist 目录"（用 `runtime.GOOS` 判断 exe 后缀），
 > `relruntime` 处理"跨平台官方 zip"（看 zip 里到底有 `electron` 还是 `electron.exe`）。
 
