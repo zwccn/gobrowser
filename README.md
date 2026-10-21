@@ -18,7 +18,7 @@ gobrowser.New(gobrowser.Config{Title: "报表中心"}).Show()
 - 窗口控制走本地 HTTP（Go 侧）/ preload 桥（页面侧），两种语言都不用碰 Electron
 - 支持 Windows x64/x86、Linux x64/arm64/loong64/mips64el
 
-> 设计细节见 [架构方案](docs/架构方案.md)，接入细节见 [开发者指南](docs/开发者指南.md)。
+> 设计细节见 [架构方案](docs/架构方案.md)，接入细节见 [开发者指南](docs/开发者指南.md)，已知差距与待办见 [TODO](docs/TODO.md)。
 
 
 
