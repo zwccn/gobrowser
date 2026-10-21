@@ -1,0 +1,11 @@
+{
+  "appId": "com.acme.report",
+  "name": "报表中心",
+  "version": "1.2.0",
+  "preferBundled": true,
+  "gpu": "disable",
+  "closeToTray": false,
+  "window": { "width": 1000, "height": 680, "frame": false, "minWidth": 720, "minHeight": 480 },
+  "tray": { "enabled": false, "tooltip": "报表中心" },
+  "entry": { "waitFor": { "timeoutMs": 10000, "intervalMs": 150 } }
+}

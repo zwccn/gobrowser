@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>报表中心</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; height:100vh; display:flex; flex-direction:column;
+         font-family:"Segoe UI","Microsoft YaHei",system-ui; background:#0d1520; color:#e6eefb; }
+
+  /* 无边框窗口的拖动区：一行 CSS 就够了 */
+  .titlebar { -webkit-app-region: drag; display:flex; align-items:center; gap:10px;
+              height:44px; padding:0 6px 0 16px; background:#121c28;
+              border-bottom:1px solid rgba(255,255,255,.08); user-select:none; }
+  .titlebar .t { font-size:13px; letter-spacing:.02em; }
+  .titlebar .sp { flex:1 }
+  .btn { -webkit-app-region:no-drag; width:40px; height:30px; border:0; border-radius:6px;
+         background:transparent; color:#c9d6e6; font-size:14px; cursor:pointer; }
+  .btn:hover { background:rgba(255,255,255,.1); }
+  .btn.x:hover { background:#c0392b; color:#fff; }
+
+  main { flex:1; padding:28px 32px; overflow:auto; }
+  h1 { font-size:20px; margin:0 0 6px; font-weight:600; }
+  .sub { color:#7f93ad; font-size:13px; margin-bottom:22px; }
+  .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; max-width:900px; }
+  .card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+          border-radius:12px; padding:16px 18px; }
+  .card h2 { font-size:12px; letter-spacing:.08em; color:#6ea8dc; margin:0 0 10px; text-transform:uppercase; }
+  .row { display:flex; justify-content:space-between; font-size:13px; padding:4px 0; }
+  .row .k { color:#93a6bd }
+  .row .v { font-family:Consolas,monospace; color:#9fe6c4; }
+  .hint { margin-top:20px; font-size:12.5px; color:#7f93ad; }
+</style>
+</head>
+<body>
+  <div class="titlebar">
+    <span class="t" id="title">报表中心</span>
+    <span class="sp"></span>
+    <button class="btn" title="最小化" onclick="webshell.window.minimize()">—</button>
+    <button class="btn" title="最大化" onclick="webshell.window.maximize()">□</button>
+    <button class="btn x" title="关闭" onclick="webshell.window.close()">×</button>
+  </div>
+
+  <main>
+    <h1>页面由 Go 提供，窗口由底座托管</h1>
+    <div class="sub">这个页面里没有一行 Electron 代码，窗口按钮走的是 window.webshell</div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>桥接状态</h2>
+        <div class="row"><span class="k">window.webshell</span><span class="v" id="bridge">检测中…</span></div>
+        <div class="row"><span class="k">ping 返回</span><span class="v" id="pong">—</span></div>
+        <div class="row"><span class="k">appId</span><span class="v" id="appid">—</span></div>
+      </div>
+      <div class="card">
+        <h2>运行环境</h2>
+        <div class="row"><span class="k">platform</span><span class="v" id="platform">—</span></div>
+        <div class="row"><span class="k">版本</span><span class="v" id="version">—</span></div>
+      </div>
+    </div>
+
+    <p class="hint">拖动顶部标题栏移动窗口；点 □ 最大化；这些按钮没有写过任何 IPC 细节。</p>
+  </main>
+
+<script>
+  const set = (id, v) => { document.getElementById(id).textContent = v }
+  if (window.webshell) {
+    set('bridge', '已注入 ✓')
+    set('platform', window.webshell.app.platform)
+    window.webshell.app.ping().then(r => {
+      set('pong', JSON.stringify(r.pong))
+      set('appid', r.appId)
+      set('version', r.version)
+    }).catch(e => set('pong', 'err: ' + e.message))
+  } else {
+    set('bridge', '缺失 ✗')
+  }
+</script>
+</body>
+</html>

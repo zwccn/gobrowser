@@ -1,0 +1,7 @@
+{
+  "name": "webshell",
+  "productName": "WebShell",
+  "version": "0.1.0",
+  "description": "通用 Web 渲染底座",
+  "main": "main.js"
+}
