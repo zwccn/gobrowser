@@ -48,7 +48,7 @@ git push origin v0.1.0
 
 ## 运行时（约 180 MB，不进 Git）
 
-`go get` 只拿 SDK。运行时按平台单独分发，建议放本仓库 Releases：
+`go get` 只拿 SDK。运行时按平台单独分发，放在本仓库 Releases：
 
 ```
 gobrowser-runtime-v16.0.9-win32-x64.zip
@@ -59,11 +59,42 @@ gobrowser-runtime-v16.0.9-linux-loong64.zip
 gobrowser-runtime-v16.0.9-linux-mips64el.zip
 ```
 
-生成方式（本机平台直接复制现成 runtime，跨平台从官方 zip 解包并自动改名 + 注入 asar）：
+### 一键生成 6 个平台
+
+`tools/relruntime` 直接吃官方平台 zip，产出「解压即可当 `runtime\`」的发布件：
+把 `electron(.exe)` 改名为 `gobrowser(.exe)`、注入 19 KB 的 `app.asar`，**并保留原 zip 的权限位**
+（Linux 的 `gobrowser` / `chrome-sandbox` 是 `775`，丢了可执行位就跑不起来）。
 
 ```bash
-go run ./tools/pack -dist <electron dist 目录> -out D:\Apps\runtime -app ./app
+go run ./tools/relruntime \
+  -zips C:\aitools\00.360易创 \
+  -app ./app \
+  -out dist/release \
+  -version v16.0.9 \
+  -platforms win32-x64,win32-ia32,linux-x64,linux-arm64,linux-loong64,linux-mips64el
 ```
+
+加 `-n` 只检查不写文件。单平台约 12 秒。
+
+> 与 `tools/pack` 的分工：`pack` 处理"本机已有的 dist 目录"（用 `runtime.GOOS` 判断 exe 后缀），
+> `relruntime` 处理"跨平台官方 zip"（看 zip 里到底有 `electron` 还是 `electron.exe`）。
+
+### 上传到 Release
+
+```bash
+# 1) 建 release（tag 不存在会自动在默认分支创建）
+curl -X POST -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+  --data-binary @release.json \
+  https://api.github.com/repos/zwccn/gobrowser/releases
+
+# 2) 传资产（注意 --noproxy：uploads.github.com 直连比走代理快 2.5 倍）
+curl -X POST --noproxy '*' -H "Authorization: token $TOKEN" \
+  -H "Content-Type: application/zip" --data-binary @<file>.zip \
+  "https://uploads.github.com/repos/zwccn/gobrowser/releases/<id>/assets?name=<file>.zip"
+```
+
+实测：`api.github.com` / `uploads.github.com` 都能直连；`github.com`（网页与 git）必须走 `127.0.0.1:7897`。
+上传速度约 620 KB/s，单包 2–3 分钟。断掉会留下 `state: starter` 的残包，需先 `DELETE /releases/assets/<aid>` 再重传。
 
 ## 推送走代理
 

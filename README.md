@@ -29,7 +29,18 @@ go get github.com/zwccn/gobrowser
 ### ⚠️ 运行时不在 Go 模块里
 
 `go get` 只拿到 SDK（约 200 KB）。真正画窗口的是一份加固 Electron 运行时（约 180 MB），
-必须放在程序**同级**的 `runtime\`：
+必须放在程序**同级**的 `runtime\`。从 [Releases](https://github.com/zwccn/gobrowser/releases/tag/runtime-v16.0.9) 下载对应平台的包，解压进去：
+
+| 你编译的目标 | 下载 |
+|---|---|
+| `windows/amd64` | `gobrowser-runtime-v16.0.9-win32-x64.zip` |
+| `windows/386` | `gobrowser-runtime-v16.0.9-win32-ia32.zip` |
+| `linux/amd64` | `gobrowser-runtime-v16.0.9-linux-x64.zip` |
+| `linux/arm64` | `gobrowser-runtime-v16.0.9-linux-arm64.zip` |
+| `linux/loong64` | `gobrowser-runtime-v16.0.9-linux-loong64.zip` |
+| `linux/mips64le` | `gobrowser-runtime-v16.0.9-linux-mips64el.zip` |
+
+解压后的目录必须是这个样子：
 
 ```
 你的程序\
