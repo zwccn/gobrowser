@@ -46,6 +46,8 @@ go get github.com/zwccn/gobrowser
 
 ```bash
 GOBROWSER_RUNTIME_BASE=https://你的镜像/       # 换下载源
+# 国内实测：GitHub 直连约 55 KB/s，ghfast.top 前缀可到 1 MB/s
+# GOBROWSER_RUNTIME_BASE=https://ghfast.top/https://github.com/zwccn/gobrowser/releases/download/runtime-v16.0.9/
 GOBROWSER_RUNTIME_DIR=D:\shared\runtime-zips   # 直接读本地 zip 目录，完全不联网
 GOBROWSER_RUNTIME_CACHE=D:\cache               # 换缓存位置
 GOBROWSER_AUTO_FETCH=0                         # 彻底关闭自动获取
@@ -114,7 +116,7 @@ app.HandleFunc("/api/list", list).ShowDir("./web")   // 顺手挂业务 API（�
 | `Frameless` | 无边框（页面自己画标题栏） | false |
 | `Resizable` / `AlwaysOnTop` | 可缩放 / 置顶 | true / false |
 | `Icon` | 窗口与托盘图标 | 内置图标 |
-| `GPU` | `"disable"` 关硬件加速（虚拟机/RDP） | 自动 |
+| `GPU` | `""` 自动；`"disable"` 关硬件加速；**`"safe"` VM/远程桌面/无核显机器**（追加 5 个开关，防闪退） | 自动 |
 | `CloseToTray` | 点关闭收进托盘 | false |
 | `Tray` | 托盘图标 + 菜单 | 不创建 |
 | `OnEvent` | 收低频事件 | — |
@@ -304,6 +306,8 @@ trailer = magic "WSPAYLD1"(8) | version(4) | offset(8) | size(8) | sha256前8字
 | `sandbox:true` 页面加载失败 `ERR_FAILED(-2)` | 本运行时下 sandbox + 渲染进程起不来 | 固定 `sandbox:false` + `contextIsolation:true` |
 | `capturePage()` 返回 0×0 | 本 VM 的合成限制（重试/隐藏后截都无效） | 接口保留并返回可读错误，不当作验证手段 |
 | 握手读到空行 | Electron 启动会先写一个 `\r\n` | SDK 跳过空行，只认以 `{` 开头的行 |
+| VM / 远程桌面里窗口刚出来就闪退，日志刷 `GPU process exited unexpectedly` | 硬件加速在虚拟 GPU 上不稳 | 只设 `"gpu": "disable"` **不够**（实测 10 秒后仍 FATAL）；有效的是 `"gpu": "safe"`，会追加 `--disable-gpu --disable-gpu-compositing --disable-software-rasterizer --disable-dev-shm-usage --no-sandbox` 五个开关 |
+| 只能跑 32 位版本 / 想用 x64 却拿到 ia32 包 | 本机 Go 是 `windows/386` 时，`go build` 默认出 32 位，自动获取也按架构选包 | 要 x64 就 `set GOARCH=amd64` 交叉编译；运行时包与产物架构必须一致 |
 
 ---
 

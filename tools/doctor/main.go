@@ -164,7 +164,7 @@ func main() {
 	// 6) 环境提示
 	if v := os.Getenv("SESSIONNAME"); strings.HasPrefix(strings.ToUpper(v), "RDP") {
 		if cfg.GPU != "disable" {
-			add("!", "显卡", "检测到远程桌面会话，建议 app.json 设 \"gpu\": \"disable\"")
+			add("!", "显卡", "检测到远程桌面/VM 会话，建议 app.json 设 \"gpu\": \"safe\"（只关加速不够，会闪退）")
 		}
 	}
 	if cfg.CloseToTray {

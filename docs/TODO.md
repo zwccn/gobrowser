@@ -67,6 +67,7 @@
 - [x] 运行时自动获取：`go run .` 缺运行时自动下载到用户缓存（`internal/runtimefetch`，含清单/校验/解压/缓存 + 5 个单测）；生产构建不联网，靠 `debug.ReadBuildInfo` 区分 go run
 - [x] `tools/build -fetch`：一条命令下载并组装 `bundled` 包；镜像/离线走 `GOBROWSER_RUNTIME_BASE` / `GOBROWSER_RUNTIME_DIR` / `GOBROWSER_RUNTIME_CACHE`
 - [x] `tools/relruntime -manifest`：打完运行时 zip 顺手把清单（size/sha256）写回 `internal/runtimefetch/`，发版流程闭环，避免手工同步漏掉
+- [x] `gpu: "safe"`：VM/远程桌面/无核显机器的防闪退模式（`--disable-gpu --disable-gpu-compositing --disable-software-rasterizer --disable-dev-shm-usage --no-sandbox`，实测只关加速不够）；另支持 `extraSwitches` 自定义开关
 - [x] 配置文件按程序名命名：`<程序名>.app.json` 优先、`app.json` 兜底 —— 多产品共用一个统一目录不再互相覆盖（新增 `appjson.go` + 单测，`tools/build` / `cmd/demo` / `tools/doctor` 已接入）
 - [x] 命名统一 `webshell` → `gobrowser`（代码文案/路径/包注释 + 文档）
 - [x] 两份文档入库 `docs/`，README 加文档入口

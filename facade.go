@@ -30,13 +30,14 @@ type Config struct {
 	Icon                string // 窗口/托盘图标路径（png/ico）
 
 	// 行为
-	GPU         string       // "" = 自动；"disable" = 关硬件加速（虚拟机/RDP 建议）
-	CloseToTray bool         // 点关闭收进托盘而不是退出
-	Tray        *TrayOptions // 非 nil 则自动创建托盘
-	OnEvent     func(Event)  // 可选：收低频事件
-	Verbose     bool         // 把外壳日志透传到 stderr
-	ConfigFile  string       // 直接指定现成 app.json（一般不用）
-	RuntimeDir  string       // 显式指定 runtime 目录；留空则自动（同级目录 → 内嵌载荷）
+	GPU           string       // "" = 自动；"disable" = 关硬件加速；"safe" = VM/远程桌面/无核显机器（追加 5 个稳定开关，实测能避免闪退）
+	ExtraSwitches []string     // 追加的 Chromium 命令行开关，特殊情况才用
+	CloseToTray   bool         // 点关闭收进托盘而不是退出
+	Tray          *TrayOptions // 非 nil 则自动创建托盘
+	OnEvent       func(Event)  // 可选：收低频事件
+	Verbose       bool         // 把外壳日志透传到 stderr
+	ConfigFile    string       // 直接指定现成 app.json（一般不用）
+	RuntimeDir    string       // 显式指定 runtime 目录；留空则自动（同级目录 → 内嵌载荷）
 }
 
 // Shell 是类库门面：New 之后调 Show/ShowDir/ShowFS/ShowURL 即可。
@@ -274,6 +275,9 @@ func (s *Shell) writeTempAppJSON() (string, error) {
 	}
 	if s.cfg.GPU != "" {
 		cfg["gpu"] = s.cfg.GPU
+	}
+	if len(s.cfg.ExtraSwitches) > 0 {
+		cfg["extraSwitches"] = s.cfg.ExtraSwitches
 	}
 	if s.cfg.CloseToTray {
 		cfg["closeToTray"] = true

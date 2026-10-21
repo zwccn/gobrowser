@@ -53,6 +53,19 @@ fs.mkdirSync(userDataDir, { recursive: true })
 app.setPath('userData', userDataDir)
 app.setName(appName)
 if (cfg.gpu === 'disable') app.disableHardwareAcceleration()
+// gpu: "safe" 用于 VM / 远程桌面 / 无核显的服务器机器：只关硬件加速不够，
+// 窗口会"GPU process exited unexpectedly"后闪退（实测 10s 内 FATAL）。
+// 这组开关是逐个试出来的组合，缺一不可。
+if (cfg.gpu === 'safe') {
+  for (const s of ['disable-gpu', 'disable-gpu-compositing', 'disable-software-rasterizer', 'disable-dev-shm-usage', 'no-sandbox']) {
+    app.commandLine.appendSwitch(s)
+  }
+  app.disableHardwareAcceleration()
+}
+// 自定义开关兜底：特殊情况可自行追加 Chromium 命令行参数
+for (const s of (cfg.extraSwitches || [])) {
+  if (s) app.commandLine.appendSwitch(String(s))
+}
 if (cfg.allowMultiple !== true) app.requestSingleInstanceLock() || app.exit(0)
 
 // ------------------------------------------------------------------ 状态

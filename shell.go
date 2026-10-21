@@ -60,11 +60,12 @@ type App struct {
 }
 
 type appConfig struct {
-	AppID         string `json:"appId"`
-	Name          string `json:"name"`
-	Version       string `json:"version"`
-	PreferBundled bool   `json:"preferBundled"`
-	GPU           string `json:"gpu"`
+	AppID         string   `json:"appId"`
+	Name          string   `json:"name"`
+	Version       string   `json:"version"`
+	PreferBundled bool     `json:"preferBundled"`
+	GPU           string   `json:"gpu"`
+	ExtraSwitches []string `json:"extraSwitches"`
 	Entry         struct {
 		URL     string `json:"url"`
 		WaitFor struct {
@@ -152,11 +153,12 @@ func Start(o Options) (*App, error) {
 	events := fmt.Sprintf("http://127.0.0.1:%d/_shell/events", uiPort)
 
 	// 2) 拉起外壳
-	cmd := exec.Command(rt.Exe,
-		"--app="+appJSON,
-		"--entry="+entry,
-		"--events="+events,
-	)
+	args := []string{"--app=" + appJSON, "--entry=" + entry, "--events=" + events}
+	// GPU 开关走命令行：与 app.commandLine.appendSwitch 等效，但不用改 asar，
+	// 旧 runtime 配合新 SDK 也立刻生效。
+	args = append(args, gpuSwitches(cfg)...)
+	args = append(args, cfg.ExtraSwitches...)
+	cmd := exec.Command(rt.Exe, args...)
 	cmd.Dir = filepath.Dir(appJSON)
 	cmd.Env = cleanEnv(o.Env)
 
@@ -389,3 +391,23 @@ func (a *App) do(method, path string, body any) (map[string]any, error) {
 
 // Capturer 供 Window.Capture 使用
 func decodePNG(b64 string) ([]byte, error) { return base64.StdEncoding.DecodeString(b64) }
+
+// gpuSwitches 按 app.json 的 gpu 模式返回 Chromium 开关。
+//
+// "safe" 是 VM / 远程桌面 / 无核显机器的防闪退组合：只关硬件加速不够
+// （实测窗口会闪退并 FATAL），这五个开关是逐个试出来的有效组合。
+func gpuSwitches(cfg appConfig) []string {
+	switch cfg.GPU {
+	case "safe":
+		return []string{
+			"--disable-gpu",
+			"--disable-gpu-compositing",
+			"--disable-software-rasterizer",
+			"--disable-dev-shm-usage",
+			"--no-sandbox",
+		}
+	case "disable":
+		return []string{"--disable-gpu"}
+	}
+	return nil
+}
