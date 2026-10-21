@@ -62,6 +62,7 @@
 
 ## 已完成（2026-10-21）
 
+- [x] 配置文件按程序名命名：`<程序名>.app.json` 优先、`app.json` 兜底 —— 多产品共用一个统一目录不再互相覆盖（新增 `appjson.go` + 单测，`tools/build` / `cmd/demo` / `tools/doctor` 已接入）
 - [x] 命名统一 `webshell` → `gobrowser`（代码文案/路径/包注释 + 文档）
 - [x] 两份文档入库 `docs/`，README 加文档入口
 - [x] 命令订正：`gobrowser runtime/pack/doctor/run`、`shell doctor` → `go run ./tools/*`；`--target/--mode` → `-targets/-bundle`；包名 `shell.*` → `gobrowser.*`；删未实现的 `SHELL_DEV_URL`

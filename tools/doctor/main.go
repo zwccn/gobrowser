@@ -49,8 +49,12 @@ func main() {
 		cs = append(cs, check{icon, name, fmt.Sprintf(format, args...)})
 	}
 
-	// 1) app.json
-	cfgPath := filepath.Join(base, "app.json")
+	// 1) app.json（<程序名>.app.json 优先，退回旧的 app.json）
+	cfgPath, found := gobrowser.FindAppJSON(base, "")
+	label := "app.json"
+	if found {
+		label = filepath.Base(cfgPath)
+	}
 	cfg := struct {
 		AppID         string `json:"appId"`
 		Name          string `json:"name"`
@@ -60,20 +64,22 @@ func main() {
 		CloseToTray   bool   `json:"closeToTray"`
 	}{}
 	appID := "gobrowser"
-	if b, err := os.ReadFile(cfgPath); err != nil {
-		if os.IsNotExist(err) {
-			add("i", "app.json", "没有（类库模式下由 Config 自动生成，正常）")
+	if !found {
+		if n := gobrowser.CountAppJSON(base); n > 1 {
+			add("!", "app.json", "目录里有 %d 个 <程序名>.app.json，用 -app 指定要体检哪一个", n)
 		} else {
-			add("✗", "app.json", "读不到: %v", err)
+			add("i", "app.json", "没有（类库模式下由 Config 自动生成，正常）")
 		}
+	} else if b, err := os.ReadFile(cfgPath); err != nil {
+		add("✗", label, "读不到: %v", err)
 	} else if err := json.Unmarshal(b, &cfg); err != nil {
-		add("✗", "app.json", "解析失败: %v", err)
+		add("✗", label, "解析失败: %v", err)
 	} else {
 		if cfg.AppID == "" {
-			add("✗", "app.json", "缺少 appId（隔离锚点）")
+			add("✗", label, "缺少 appId（隔离锚点）")
 		} else {
 			appID = cfg.AppID
-			add("✓", "app.json", "%s v%s · appId=%s", cfg.Name, cfg.Version, cfg.AppID)
+			add("✓", label, "%s v%s · appId=%s", cfg.Name, cfg.Version, cfg.AppID)
 		}
 	}
 

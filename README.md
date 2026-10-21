@@ -115,7 +115,9 @@ _ = app.Wait()
 ```
 
 **开发者不写 app.json**：`Config` 会被落成一份临时 app.json（`%TEMP%\gobrowser-<appId>.app.json`）。
-需要完全掌控时用 `shell.NewFromFile("app.json")` 走底层模式（见 §3）。
+需要完全掌控时用 `gobrowser.NewFromFile("Report.app.json")` 走底层模式（见 §3）。
+
+> 多个产品放进同一个目录时，配置文件必须与 exe 同名（`Report.app.json`）；SDK 查找顺序是 `<程序名>.app.json` → `app.json`。
 
 > ⚠️ 窗口属于外层 `gobrowser.exe` 进程，不属于你的 Go 进程 —— 用任务管理器/EnumWindows 按 Go 进程找窗口是找不到的。
 
@@ -166,7 +168,7 @@ go run ./tools/build -targets win-x64 -bundle bundled -runtime-dir C:\tmp_ws\run
 dist\
 ├── win-x64\
 │   ├── demo.exe          ← 5.4 MB，PE Subsystem=2（GUI，无控制台）
-│   ├── app.json
+│   ├── demo.app.json     ← 与 exe 同名，按程序名自动加载
 │   └── runtime\          ← 174 MB（gobrowser.exe + electron.sign + lic + resources\app.asar）
 ├── demo-win-x64.zip      ← 80.7 MB，sha256 已打印
 └── demo.iss              ← 用 Inno Setup 6 编译成安装包
@@ -238,7 +240,7 @@ trailer = magic "WSPAYLD1"(8) | version(4) | offset(8) | size(8) | sha256前8字
 ## 3. 实测结果（2026-10-21，Win10 VM）
 
 ```
-[boot]        exe=C:\tmp_ws\ReportApp.exe  app=…\app.json
+[boot]        exe=C:\tmp_ws\ReportApp.exe  app=…\ReportApp.app.json
 [runtime]     dir=…\runtime  version=16.0.9  electron=16.0.9  browser360=10.6.1001.11
 [ui]          port=3883
 [event]       app.ready / window.loaded(http://127.0.0.1:3883/) / window.focus

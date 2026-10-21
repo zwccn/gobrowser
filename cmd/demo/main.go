@@ -22,7 +22,7 @@ import (
 var webFS embed.FS
 
 func main() {
-	appJSON := flag.String("app", "", "app.json 路径（默认取 exe 同目录的 app.json）")
+	appJSON := flag.String("app", "", "app.json 路径（默认取 exe 同目录的 <程序名>.app.json，再退回 app.json）")
 	hold := flag.Duration("hold", 0, "运行多久后自动退出（0 = 一直开着）")
 	logPath := flag.String("log", "", "日志文件路径（默认按 appId 写用户目录）")
 	flag.Parse()
@@ -30,7 +30,11 @@ func main() {
 	cfgPath := *appJSON
 	if cfgPath == "" {
 		exe, _ := os.Executable()
-		cfgPath = filepath.Join(filepath.Dir(exe), "app.json")
+		if p, ok := gobrowser.FindAppJSON(filepath.Dir(exe), gobrowser.ExeBaseName(exe)); ok {
+			cfgPath = p
+		} else {
+			cfgPath = filepath.Join(filepath.Dir(exe), "app.json") // 报错时给出期望路径
+		}
 	}
 	appID := peekAppID(cfgPath)
 

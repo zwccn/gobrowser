@@ -118,7 +118,8 @@ func buildOne(appdir, pkg, name, appJSON, shellJS, out, bundle, runtimeDir, zips
 	}
 
 	if _, statErr := os.Stat(appJSON); statErr == nil {
-		if err := copyFile(appJSON, filepath.Join(dir, "app.json")); err != nil {
+		// 落成 <程序名>.app.json：多个产品放进同一个统一目录时不会互相覆盖
+		if err := copyFile(appJSON, filepath.Join(dir, name+".app.json")); err != nil {
 			return err
 		}
 	} else {
@@ -129,7 +130,7 @@ func buildOne(appdir, pkg, name, appJSON, shellJS, out, bundle, runtimeDir, zips
 	}
 
 	if single {
-		// 单文件：runtime 压成 zip 追加到 exe 尾部，目录里只留 exe + app.json
+		// 单文件：runtime 压成 zip 追加到 exe 尾部，目录里只留 exe + <程序名>.app.json
 		tmp := filepath.Join(os.TempDir(), "ws-payload-"+t.name)
 		_ = os.RemoveAll(tmp)
 		defer os.RemoveAll(tmp)

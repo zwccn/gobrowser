@@ -303,12 +303,21 @@ func (s *Shell) writeTempAppJSON() (string, error) {
 // ---------------------------------------------------------------- 小工具
 
 func exeBaseName() string {
+	return ExeBaseName(mustExecutable())
+}
+
+// ExeBaseName 返回去掉扩展名的可执行文件名（Windows 上 demo.exe → demo）。
+func ExeBaseName(path string) string {
+	base := filepath.Base(path)
+	return strings.TrimSuffix(base, filepath.Ext(base))
+}
+
+func mustExecutable() string {
 	exe, err := os.Executable()
 	if err != nil {
 		return "app"
 	}
-	base := filepath.Base(exe)
-	return strings.TrimSuffix(base, filepath.Ext(base))
+	return exe
 }
 
 func sanitize(s string) string {
