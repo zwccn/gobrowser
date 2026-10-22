@@ -254,8 +254,12 @@ func unpackRuntime(zipPath, dst, shellJS string) error {
 		}
 	}
 
-	// 底座代码
-	return asar.Write(shellJS, filepath.Join(dst, "resources", "app.asar"))
+	// 底座代码 + 版本标记（SDK 据此判断要不要用自己内置的底座覆盖）
+	resDir := filepath.Join(dst, "resources")
+	if err := asar.Write(shellJS, filepath.Join(resDir, "app.asar")); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(resDir, "shell.version"), []byte(shellVersion(shellJS)+"\n"), 0o644)
 }
 
 func genSyso(appdir, pkg, icon, name, ver string) error {
@@ -445,4 +449,19 @@ func keys() []string {
 func fail(format string, args ...any) {
 	fmt.Printf("✗ "+format+"\n", args...)
 	os.Exit(1)
+}
+
+// shellVersion 读底座 package.json 的 shellVersion（没有就当 0.0.0）。
+func shellVersion(appDir string) string {
+	b, err := os.ReadFile(filepath.Join(appDir, "package.json"))
+	if err != nil {
+		return "0.0.0"
+	}
+	var pkg struct {
+		ShellVersion string `json:"shellVersion"`
+	}
+	if json.Unmarshal(b, &pkg) != nil || pkg.ShellVersion == "" {
+		return "0.0.0"
+	}
+	return pkg.ShellVersion
 }

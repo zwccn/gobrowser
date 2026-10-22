@@ -51,6 +51,7 @@ GOBROWSER_RUNTIME_BASE=https://你的镜像/       # 换下载源
 GOBROWSER_RUNTIME_DIR=D:\shared\runtime-zips   # 直接读本地 zip 目录，完全不联网
 GOBROWSER_RUNTIME_CACHE=D:\cache               # 换缓存位置
 GOBROWSER_AUTO_FETCH=0                         # 彻底关闭自动获取
+GOBROWSER_SHELL_SYNC=0                         # 关掉"底座随 SDK 自动更新"（见 §2.5）
 ```
 
 手动下载时，对应关系：
@@ -73,13 +74,35 @@ GOBROWSER_AUTO_FETCH=0                         # 彻底关闭自动获取
 │   ├── gobrowser.exe           ← 渲染进程（Go 程序是它的父进程）
 │   ├── electron.sign
 │   ├── lic\
-│   └── resources\app.asar      ← 底座代码，19 KB
+│   └── resources\app.asar      ← 底座代码（约 24 KB，SDK 启动时会自动对齐到最新）
 └── web\                        ← 你的页面
 ```
 
 缺任何一项都会**直接报错并说明缺哪个文件**（写日志 + 弹原生窗口），不会白屏。
 
 想做成"一个 exe 搞定"，用 `-single` 形态把运行时追加到自己 exe 尾部，首次运行自动释放到用户缓存。
+
+### 底座随 SDK 走：改 JS 不用重发运行时
+
+外壳逻辑（`app/main.js` 等）以前只存在于 `runtime/resources/app.asar` 里，于是
+"SDK 新增了一个 HTTP 动作，老 runtime 不认识"就成了常见坑（典型报错
+`400 unknown action: icon`），修一次要把 80 MB 的运行时重发一遍。
+
+现在 SDK 把 `app/` 编进自己（约 24 KB），启动外壳前做三件事：
+
+1. 读 `<runtime>/resources/shell.version`（新发行的运行时才有）；
+2. 比 SDK 内置的 `shellVersion`（`app/package.json`）小，就把 `app.asar` 原子替换成自带的，
+   原件留一份 `app.asar.bak`；
+3. 写回 `shell.version`，下次启动直接跳过（同一个运行时只改一次）。
+
+所以**只升级 SDK（`go get -u`）就能拿到新的底座能力，不必重发运行时**。
+
+边界条件：
+
+- 运行时自带的底座**更新**时不动它（防止旧 SDK 把新运行时降级）；
+- 运行时目录只读 / 文件被占用时只跳过，不阻断启动 —— 相关接口会返回可读的错误，
+  说明"runtime 侧 vs SDK 侧"的底座版本该怎么升；
+- `GOBROWSER_SHELL_SYNC=0` 可整体关闭（签名分发、要求运行时只读的场景）。
 
 ---
 
@@ -326,6 +349,7 @@ trailer = magic "WSPAYLD1"(8) | version(4) | offset(8) | size(8) | sha256前8字
 | VM / 远程桌面里窗口刚出来就闪退，日志刷 `GPU process exited unexpectedly` | 硬件加速在虚拟 GPU 上不稳 | 只设 `"gpu": "disable"` **不够**（实测 10 秒后仍 FATAL）；有效的是 `"gpu": "safe"`，会追加 `--disable-gpu --disable-gpu-compositing --disable-software-rasterizer --disable-dev-shm-usage --no-sandbox` 五个开关 |
 | 托盘图标不显示（也不报错） | `TrayOptions.Icon` 以前没转绝对路径，而底座工作目录是 app.json 所在目录（`%TEMP%`），相对路径必然找不到 | 现在 `SetTray` / `Config.Tray` 都会 Abs；仍建议写绝对路径或相对 exe 自己算 |
 | 想按状态换图标（空闲/运行中） | 原来只能靠 Win32 `WM_SETICON` 跨进程 hack，只认 `.ico`、要同窗口站 | SDK 已支持：`w.SetIcon(png路径)` 换单个窗口，`app.SetIcon(png路径)` 连托盘/Dock 一起换；传空串恢复默认 |
+| `400 unknown action: icon`（或其它新动作） | SDK 比运行时新：动作加在底座 `app/main.js` 里，老 runtime 的 `app.asar` 没有这段代码 | SDK 启动时会把 `app.asar` 自动对齐到自带的版本（见 §0「底座随 SDK 走」）；仍报错说明同步被 `GOBROWSER_SHELL_SYNC=0` 关掉、目录只读，或运行时自带底座更新 |
 | 只能跑 32 位版本 / 想用 x64 却拿到 ia32 包 | 本机 Go 是 `windows/386` 时，`go build` 默认出 32 位，自动获取也按架构选包 | 要 x64 就 `set GOARCH=amd64` 交叉编译；运行时包与产物架构必须一致 |
 
 ---

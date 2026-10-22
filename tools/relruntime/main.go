@@ -222,6 +222,11 @@ func buildOne(srcZip, dstZip, appDir string) (int64, error) {
 	if err := addFile(zw, "resources/app.asar", tmpPath); err != nil {
 		return 0, err
 	}
+	// 底座版本标记：SDK 启动时据此判断"运行时自带的底座是不是比我的新"，
+	// 避免 SDK 把更新的运行时降级回自己内置的那份。
+	if err := addBytes(zw, "resources/shell.version", []byte(shellVersion(appDir)+"\n")); err != nil {
+		return 0, err
+	}
 
 	if err := zw.Close(); err != nil {
 		return 0, err
@@ -292,4 +297,29 @@ func addFile(zw *zip.Writer, name, path string) error {
 func fail(msg string) {
 	fmt.Println("✗ " + msg)
 	os.Exit(1)
+}
+
+// shellVersion 读底座 package.json 的 shellVersion（没有就当 0.0.0）。
+func shellVersion(appDir string) string {
+	b, err := os.ReadFile(filepath.Join(appDir, "package.json"))
+	if err != nil {
+		return "0.0.0"
+	}
+	var pkg struct {
+		ShellVersion string `json:"shellVersion"`
+	}
+	if json.Unmarshal(b, &pkg) != nil || pkg.ShellVersion == "" {
+		return "0.0.0"
+	}
+	return pkg.ShellVersion
+}
+
+// addBytes 往 zip 里塞一段内存内容（与 addFile 同样的权限策略）。
+func addBytes(zw *zip.Writer, name string, data []byte) error {
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Deflate, Modified: time.Now()})
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(data)
+	return err
 }

@@ -62,7 +62,7 @@ gobrowser-runtime-v16.0.9-linux-mips64el.zip
 ### 一键生成 6 个平台
 
 `tools/relruntime` 直接吃官方平台 zip，产出「解压即可当 `runtime\`」的发布件：
-把 `electron(.exe)` 改名为 `gobrowser(.exe)`、注入 19 KB 的 `app.asar`，**并保留原 zip 的权限位**
+把 `electron(.exe)` 改名为 `gobrowser(.exe)`、注入约 24 KB 的 `app.asar` 和 `resources/shell.version`，**并保留原 zip 的权限位**
 （Linux 的 `gobrowser` / `chrome-sandbox` 是 `775`，丢了可执行位就跑不起来）。
 
 ```bash
@@ -93,6 +93,19 @@ go run ./tools/relruntime \
 - 清单里的 sha256 必须对应**最终上传到 Release 的那个 zip**；同一个版本的 zip 不要重复打包覆盖（字节一变，已发布客户端的校验就会失败）
 - 本地改了 `app/` 之后重打包只用于自测，别拿本地产物去更新线上清单
 - `-base` 可改下载前缀（比如换成自己的镜像）
+
+### 底座 JS 改动怎么发（不需要重发 runtime）
+
+`app/` 会打进 SDK（`go:embed`），启动时比对 `resources/shell.version` 决定是否替换
+`runtime/resources/app.asar`（原件留 `.bak`）。所以：
+
+- **只改 `app/main.js` / `preload.js`** → 抬 `app/package.json` 的 `shellVersion`，
+  `go get -u` 的开发者下次启动就生效，**不用碰 Release**；
+- **改了 `shellVersion` 的运行时**：`relruntime` / `build` 会自动写 `resources/shell.version`，
+  这样旧 SDK 不会把新运行时降级；
+- **改 Electron 本体 / 加固** → 才需要按下面的流程重发 runtime；
+- 验证：`gobrowser.ShellVersion()` 打印 SDK 内置底座版本，`<runtime>/resources/shell.version` 是运行时侧版本，
+  两边不一致时先跑一次程序再看。
 
 > 与 `tools/pack` 的分工：`pack` 处理"本机已有的 dist 目录"（用 `runtime.GOOS` 判断 exe 后缀），
 > `relruntime` 处理"跨平台官方 zip"（看 zip 里到底有 `electron` 还是 `electron.exe`）。

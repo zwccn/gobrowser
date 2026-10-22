@@ -122,6 +122,13 @@ func Start(o Options) (*App, error) {
 		}
 	}
 
+	// 底座自愈：runtime 里的 app.asar 比 SDK 内置的旧就替换掉。
+	// 这样"底座加了新动作"不必重发几十 MB 运行时段 —— 只升级 SDK 就生效。
+	// 失败不阻断启动：外壳继续用旧底座，相关接口会返回可读的"运行时过旧"错误。
+	if err := syncShell(rt.Dir); err != nil && o.Debug {
+		fmt.Fprintf(os.Stderr, "[gobrowser] 底座同步跳过（将继续使用运行时自带的旧底座）: %v\n", err)
+	}
+
 	// 1) 业务 UI 服务 + 事件端点
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -386,7 +393,16 @@ func (a *App) do(method, path string, body any) (map[string]any, error) {
 	if !out.OK {
 		// 底座的错误体是 {ok:false, error:{code,message}}；把 message 原样抛出来，
 		// 否则调用方只看到"响应不是 JSON（400）"，真正原因（比如图标文件不存在）被吞掉。
-		return nil, fmt.Errorf("%v: %s", out.Error.Code, out.Error.Message)
+		msg := out.Error.Message
+		if strings.Contains(msg, "unknown action") || strings.HasPrefix(msg, "not found: /v1/") {
+			// 最常见的原因不是参数错，而是"运行时里的底座不认识这个动作"：
+			// SDK 新、runtime 旧。直接说清楚，别让人去猜。
+			msg += fmt.Sprintf("（底座缺少这个动作：runtime 侧 %s，SDK 侧 %s。"+
+				"SDK 启动时会把较旧的 runtime 底座替换成自带的；没替换说明 runtime 底座更新，"+
+				"或同步被 GOBROWSER_SHELL_SYNC=0 关掉、运行时目录只读。升级 SDK 或运行时即可）",
+				a.shellVer(), ShellVersion())
+		}
+		return nil, fmt.Errorf("%v: %s", out.Error.Code, msg)
 	}
 	return out.Data, nil
 }

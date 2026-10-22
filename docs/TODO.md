@@ -79,3 +79,13 @@
 - [x] 修 `App.do()` 把底座错误码当字符串解析的问题：`code` 是数字导致整条错误退化成"响应不是 JSON（400）"，真正原因（如"图标文件不存在"）被吞掉
 - [x] 文档：README §0 加「运行时换图标」小节 + 踩坑表两条；开发者指南 §4 图标/托盘写法订正（`app.Tray()` 不存在）；架构方案 §9.1 端点表补 `icon` / `/v1/icon`
 - [x] 实机验证：win32-x64 运行时 + 两个 PNG，`w.SetIcon` / `app.SetIcon` / 错误路径 / 恢复默认 / `SetTray` 全部通过（`info.icon` 回读正确，exit=0）
+
+## 已完成（2026-10-22）
+
+- [x] **底座随 SDK 走**：`app/` 用 `go:embed` 编进 SDK（约 24 KB），启动前比对 `<runtime>/resources/shell.version`，运行时侧更旧就原子替换 `app.asar`（原件留 `app.asar.bak`），并写回标记；运行时更新则不降级。于是「新增一个控制面动作」只需发 SDK，不必重发几十 MB 运行时。`GOBROWSER_SHELL_SYNC=0` 可关；`gobrowser.ShellVersion()` 暴露 SDK 内置版本
+- [x] `tools/relruntime` / `tools/build` 打包时自动写 `resources/shell.version`（取自 `app/package.json` 的 `shellVersion`），避免旧 SDK 把新运行时降级
+- [x] `App.do()` 遇到 `unknown action: …` / `not found: /v1/…` 时补一句「底座缺少这个动作：runtime 侧 x，SDK 侧 y」，把"运行时过旧"直接说清楚
+- [x] `internal/asar` 增加 `PackFS(fs.FS)`（原来只能从磁盘目录打包），`Write` 改为复用同一套 `pack`
+- [x] 测试：`shellsync_test.go` 6 组（老运行时应升级 + 备份、新运行时不降级、同版本空操作、内容相同只补标记、`GOBROWSER_SHELL_SYNC=0`、版本比较）+ `TestEmbeddedShellBundle`
+- [x] 实机验证：用**线上 10-21 那版 runtime**（asar 20 247 字节、无 icon 动作）复现 `400 unknown action: icon`；换新 SDK 启动后 asar 自动替换为 23 715 字节 + `.bak` + `shell.version=1.1.0`，`SetIcon` / `SetIcon("")` / `SetTray` 全通；二次启动 md5 不变（幂等）；把标记改成 9.9.9 后确认不会降级
+- [x] 文档：README §0「底座随 SDK 走」+ 环境变量 + 踩坑表两条；开发者指南 §5 版本契约；MAINTAINING「底座 JS 改动怎么发」
