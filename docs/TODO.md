@@ -74,3 +74,8 @@
 - [x] 命令订正：`gobrowser runtime/pack/doctor/run`、`shell doctor` → `go run ./tools/*`；`--target/--mode` → `-targets/-bundle`；包名 `shell.*` → `gobrowser.*`；删未实现的 `SHELL_DEV_URL`
 - [x] 移除授权合规表述（保留 `lic/` 作为必备文件的技术说明）
 - [x] 删除 `360electron-guide/`（结论已沉淀进代码与 README）
+- [x] **运行时换图标**（2026-10-22）：窗口动作 `POST /v1/windows/{id}/icon` + 应用级 `POST /v1/icon`；SDK 侧 `Window.SetIcon(path)` / `Shell.SetIcon(path)`（= `App.SetAppIcon`，连托盘 + macOS Dock 一起换），空串恢复默认；`preload` 暴露 `window.webshell.window.setIcon()`；`window` info 增加 `icon` 字段便于回读与自动化断言
+- [x] 修 `TrayOptions.Icon` 没转绝对路径的老 bug（`SetTray` 与 `Config.Tray` 都 Abs），托盘图标不再静默不显示
+- [x] 修 `App.do()` 把底座错误码当字符串解析的问题：`code` 是数字导致整条错误退化成"响应不是 JSON（400）"，真正原因（如"图标文件不存在"）被吞掉
+- [x] 文档：README §0 加「运行时换图标」小节 + 踩坑表两条；开发者指南 §4 图标/托盘写法订正（`app.Tray()` 不存在）；架构方案 §9.1 端点表补 `icon` / `/v1/icon`
+- [x] 实机验证：win32-x64 运行时 + 两个 PNG，`w.SetIcon` / `app.SetIcon` / 错误路径 / 恢复默认 / `SetTray` 全部通过（`info.icon` 回读正确，exit=0）

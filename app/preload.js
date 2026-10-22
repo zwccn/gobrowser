@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('webshell', {
     close: () => action('close'),
     toggleFullScreen: () => action('toggleFullScreen'),
     setTitle: t => action('setTitle', t),
+    setIcon: p => action('setIcon', p),          // 运行时换窗口图标（png/jpg/ico 绝对路径）
     isMaximized: () => action('isMaximized').then(r => r.value),
     reload: () => action('reload')
   },

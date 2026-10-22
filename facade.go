@@ -65,10 +65,13 @@ func New(cfg Config) *Shell {
 	if cfg.Height <= 0 {
 		cfg.Height = 720
 	}
-	if cfg.Icon != "" {
-		if abs, err := filepath.Abs(cfg.Icon); err == nil {
-			cfg.Icon = abs
-		}
+	// 图标路径一律转绝对：底座的工作目录是 app.json 所在目录（%TEMP%），相对路径会找不到。
+	// 托盘图标之前漏了这一步，表现是"托盘图标静默不显示"。
+	cfg.Icon = absPath(cfg.Icon)
+	if cfg.Tray != nil {
+		t := *cfg.Tray
+		t.Icon = absPath(t.Icon)
+		cfg.Tray = &t
 	}
 	return &Shell{cfg: cfg, mux: http.NewServeMux()}
 }
@@ -228,6 +231,19 @@ func (s *Shell) Window() *Window {
 		return nil
 	}
 	return s.app.Window("main")
+}
+
+// SetIcon 运行时替换整个应用的图标（所有窗口 + 托盘 + macOS Dock）。传空恢复默认。
+//
+//	_ = app.SetIcon("icon-busy.png")   // 启动后切状态图标
+//	_ = app.SetIcon("icon-idle.png")
+//
+// 只想换一个窗口用 app.Window().SetIcon(...)。
+func (s *Shell) SetIcon(iconPath string) error {
+	if s.app == nil {
+		return fmt.Errorf("还没启动")
+	}
+	return s.app.SetAppIcon(absPath(iconPath))
 }
 
 // App 底层对象（需要托盘/对话框/通知/原始 HTTP 时用）。

@@ -95,6 +95,38 @@ function loadIcon (rel) {
   return nativeImage.createFromBuffer(Buffer.from(DEFAULT_ICON, 'base64'))
 }
 
+/**
+ * 运行时换图标用：失败必须抛错（loadIcon 会静默退回默认图标，接口里那样会"看着成功其实没换"）。
+ * png / jpg / ico 都可以，nativeImage 自己识别格式。
+ * 空字符串 = 恢复默认图标（app.json 的 window.icon，再不行用内置图标）。
+ */
+function iconImage (rel) {
+  if (!rel) return loadIcon(winDefaults.icon)
+  const p = resolvePath(String(rel))
+  if (!fs.existsSync(p)) throw new Error('图标文件不存在: ' + p)
+  const img = nativeImage.createFromPath(p)
+  if (img.isEmpty()) throw new Error('无法识别的图标文件（支持 png/jpg/ico）: ' + p)
+  return img
+}
+
+// 当前应显示的图标路径（空 = 默认）：换图标/恢复默认时写进 meta，供 info 回读
+function iconMetaPath (rel) {
+  if (rel) return resolvePath(String(rel))
+  return winDefaults.icon ? resolvePath(winDefaults.icon) : null
+}
+
+// 应用级换图标：所有窗口 + 托盘 + macOS Dock 一起换
+function applyAppIcon (img, iconPath) {
+  for (const [id, w] of wins) {
+    if (w.isDestroyed()) continue
+    w.setIcon(img)
+    const m = meta.get(id); if (m) m.icon = iconPath || null
+  }
+  if (tray) { try { tray.setImage(img) } catch (_) {} }
+  if (process.platform === 'darwin' && app.dock) app.dock.setIcon(img)
+  return Array.from(wins.keys())
+}
+
 function fatal (msg) {
   try { process.stderr.write('[gobrowser] ' + msg + '\n') } catch (_) {}
   process.exit(2)
@@ -149,7 +181,8 @@ function info (id) {
     isMaximized: w.isMaximized(),
     isMinimized: w.isMinimized(),
     isFullScreen: w.isFullScreen(),
-    isVisible: w.isVisible()
+    isVisible: w.isVisible(),
+    icon: m.icon || null
   }
 }
 
@@ -178,7 +211,7 @@ async function createWindow (opts) {
   })
 
   wins.set(id, win)
-  meta.set(id, { url, loaded: false })
+  meta.set(id, { url, loaded: false, icon: wcfg.icon ? resolvePath(wcfg.icon) : null })
 
   win.webContents.setWindowOpenHandler(({ url: u }) => {
     shell.openExternal(u)
@@ -313,6 +346,15 @@ async function handle (req, res) {
   }
   if (p === '/v1/shutdown') { ok(res); setTimeout(() => app.quit(), 50); return }
 
+  // ---- 应用级图标（运行时切换：所有窗口 + 托盘 + macOS Dock）
+  if (p === '/v1/icon' && req.method === 'POST') {
+    const b = await readBody(req)
+    try {
+      const ids = applyAppIcon(iconImage(b.icon), iconMetaPath(b.icon))
+      return ok(res, { windows: ids, tray: !!tray })
+    } catch (e) { return bad(res, 400, e.message) }
+  }
+
   // ---- 托盘
   if (p === '/v1/tray' && req.method === 'POST') {
     try { setTray(await readBody(req)); return ok(res, { tray: true }) } catch (e) { return bad(res, 500, '托盘创建失败: ' + e.message) }
@@ -391,6 +433,16 @@ async function handle (req, res) {
     if (action === 'fullscreen') { w.setFullScreen(!!(await readBody(req)).on); return ok(res) }
     if (action === 'always-on-top') { w.setAlwaysOnTop(!!(await readBody(req)).on); return ok(res) }
     if (action === 'title' && req.method === 'POST') { w.setTitle((await readBody(req)).title || ''); return ok(res) }
+    if (action === 'icon' && req.method === 'POST') {
+      const b = await readBody(req)
+      try {
+        const img = iconImage(b.icon)
+        w.setIcon(img) // Windows / Linux：标题栏 + 任务栏；macOS 另需 Dock
+        if (process.platform === 'darwin' && app.dock) app.dock.setIcon(img)
+        const m = meta.get(id); if (m) m.icon = iconMetaPath(b.icon)
+        return ok(res)
+      } catch (e) { return bad(res, 400, e.message) }
+    }
     if (action === 'bounds' && req.method === 'PUT') {
       const b = await readBody(req); w.setBounds(b); return ok(res)
     }
@@ -449,6 +501,13 @@ ipcMain.handle('ws:action', (e, action, payload) => {
     case 'close': w.close(); break
     case 'toggleFullScreen': w.setFullScreen(!w.isFullScreen()); break
     case 'setTitle': w.setTitle(String(payload || '')); break
+    case 'setIcon': {
+      // 页面侧换图标：只改当前窗口（要连托盘/Dock 一起换就走 Go 的 SetAppIcon）
+      const p = String(payload || '')
+      try { w.setIcon(iconImage(p)) } catch (e) { return { ok: false, error: e.message } }
+      for (const [id, win] of wins) if (win === w) { const m = meta.get(id); if (m) m.icon = iconMetaPath(p) }
+      break
+    }
     case 'isMaximized': return { ok: true, value: w.isMaximized() }
     case 'reload': w.reload(); break
     default: return { ok: false, error: 'unknown action ' + action }

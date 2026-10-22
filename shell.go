@@ -376,7 +376,7 @@ func (a *App) do(method, path string, body any) (map[string]any, error) {
 		OK    bool           `json:"ok"`
 		Data  map[string]any `json:"data"`
 		Error struct {
-			Code    string `json:"code"`
+			Code    any    `json:"code"` // 底座给的是数字 400/404/500
 			Message string `json:"message"`
 		} `json:"error"`
 	}
@@ -384,7 +384,9 @@ func (a *App) do(method, path string, body any) (map[string]any, error) {
 		return nil, fmt.Errorf("响应不是 JSON（%d）: %s", resp.StatusCode, string(raw))
 	}
 	if !out.OK {
-		return nil, fmt.Errorf("%s: %s", out.Error.Code, out.Error.Message)
+		// 底座的错误体是 {ok:false, error:{code,message}}；把 message 原样抛出来，
+		// 否则调用方只看到"响应不是 JSON（400）"，真正原因（比如图标文件不存在）被吞掉。
+		return nil, fmt.Errorf("%v: %s", out.Error.Code, out.Error.Message)
 	}
 	return out.Data, nil
 }

@@ -3,6 +3,7 @@ package gobrowser
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 )
 
 // ---------------------------------------------------------------- 托盘
@@ -25,7 +26,13 @@ type TrayOptions struct {
 }
 
 // SetTray 创建或更新托盘（重复调用等于更新）。
+//
+// Icon 允许相对路径：这里统一转绝对路径。底座的工作目录是 app.json 所在目录（类库模式下是 %TEMP%），
+// 相对路径传下去必然找不到，表现为"托盘图标静默不显示"。
 func (a *App) SetTray(o TrayOptions) error {
+	if o.Icon != "" {
+		o.Icon = absPath(o.Icon)
+	}
 	_, err := a.do(http.MethodPost, "/v1/tray", o)
 	return err
 }
@@ -40,6 +47,35 @@ func (a *App) DestroyTray() error {
 func (a *App) SetTrayMenu(items []MenuItem) error {
 	_, err := a.do(http.MethodPost, "/v1/tray/menu", map[string]any{"menu": items})
 	return err
+}
+
+// ---------------------------------------------------------------- 应用图标
+
+// SetAppIcon 运行时替换"整个应用"的图标：所有窗口（标题栏 + 任务栏）+ 托盘 + macOS Dock。
+//
+// 典型用法是状态指示：空闲用 icon-idle.png，运行中用 icon-busy.png。
+// 传空字符串恢复默认图标（app.json 的 window.icon，再不行用内置图标）。
+//
+// 和 Window.SetIcon 的区别：那个只改一个窗口，托盘和 Dock 不动。
+// 只对之后创建的新窗口不生效（底座换图标时窗口已存在），新窗口请在建好后自己调一次。
+func (a *App) SetAppIcon(iconPath string) error {
+	body := map[string]any{"icon": ""}
+	if iconPath != "" {
+		body["icon"] = absPath(iconPath)
+	}
+	_, err := a.do(http.MethodPost, "/v1/icon", body)
+	return err
+}
+
+// absPath 相对路径转绝对路径（失败时原样返回，让底座去报"文件不存在"）。
+func absPath(p string) string {
+	if p == "" {
+		return ""
+	}
+	if abs, err := filepath.Abs(p); err == nil {
+		return abs
+	}
+	return p
 }
 
 // ---------------------------------------------------------------- 通知

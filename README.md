@@ -115,7 +115,7 @@ app.HandleFunc("/api/list", list).ShowDir("./web")   // 顺手挂业务 API（�
 | `MinWidth` / `MinHeight` | 最小尺寸 | — |
 | `Frameless` | 无边框（页面自己画标题栏） | false |
 | `Resizable` / `AlwaysOnTop` | 可缩放 / 置顶 | true / false |
-| `Icon` | 窗口与托盘图标 | 内置图标 |
+| `Icon` | 窗口与托盘图标（png/jpg/ico，可相对路径） | 内置图标 |
 | `GPU` | `""` 自动；`"disable"` 关硬件加速；**`"safe"` VM/远程桌面/无核显机器**（追加 5 个开关，防闪退） | 自动 |
 | `CloseToTray` | 点关闭收进托盘 | false |
 | `Tray` | 托盘图标 + 菜单 | 不创建 |
@@ -135,6 +135,23 @@ w.SetTitle("报表中心 · 已连接")
 w.Maximize()
 _ = app.Wait()
 ```
+
+### 运行时换图标（状态指示）
+
+ICON 不是只能在 `Config.Icon` 里定死 —— 启动后可以随时换：
+
+```go
+w := app.Window()
+
+_ = w.SetIcon("D:/icons/busy.png")     // 只换这个窗口（标题栏 + 任务栏）
+_ = app.SetIcon("D:/icons/busy.png")   // 整个应用：所有窗口 + 托盘 + macOS Dock
+_ = app.SetIcon("")                    // 恢复默认（Config.Icon / 内置图标）
+```
+
+- 支持 `png` / `jpg` / `ico`；建议 256×256 PNG（大图标清晰，Windows 会自动缩放）。
+- 文件不存在时返回错误（`400: 图标文件不存在: …`），不会静默失败。
+- 只对**已存在**的窗口生效；之后新建的窗口用 `w2.SetIcon(…)` 自己再设一次。
+- 页面里也能换当前窗口：`window.webshell.window.setIcon('D:/icons/busy.png')`。
 
 **开发者不写 app.json**：`Config` 会被落成一份临时 app.json（`%TEMP%\gobrowser-<appId>.app.json`）。
 需要完全掌控时用 `gobrowser.NewFromFile("Report.app.json")` 走底层模式（见 §3）。
@@ -307,6 +324,8 @@ trailer = magic "WSPAYLD1"(8) | version(4) | offset(8) | size(8) | sha256前8字
 | `capturePage()` 返回 0×0 | 本 VM 的合成限制（重试/隐藏后截都无效） | 接口保留并返回可读错误，不当作验证手段 |
 | 握手读到空行 | Electron 启动会先写一个 `\r\n` | SDK 跳过空行，只认以 `{` 开头的行 |
 | VM / 远程桌面里窗口刚出来就闪退，日志刷 `GPU process exited unexpectedly` | 硬件加速在虚拟 GPU 上不稳 | 只设 `"gpu": "disable"` **不够**（实测 10 秒后仍 FATAL）；有效的是 `"gpu": "safe"`，会追加 `--disable-gpu --disable-gpu-compositing --disable-software-rasterizer --disable-dev-shm-usage --no-sandbox` 五个开关 |
+| 托盘图标不显示（也不报错） | `TrayOptions.Icon` 以前没转绝对路径，而底座工作目录是 app.json 所在目录（`%TEMP%`），相对路径必然找不到 | 现在 `SetTray` / `Config.Tray` 都会 Abs；仍建议写绝对路径或相对 exe 自己算 |
+| 想按状态换图标（空闲/运行中） | 原来只能靠 Win32 `WM_SETICON` 跨进程 hack，只认 `.ico`、要同窗口站 | SDK 已支持：`w.SetIcon(png路径)` 换单个窗口，`app.SetIcon(png路径)` 连托盘/Dock 一起换；传空串恢复默认 |
 | 只能跑 32 位版本 / 想用 x64 却拿到 ia32 包 | 本机 Go 是 `windows/386` 时，`go build` 默认出 32 位，自动获取也按架构选包 | 要 x64 就 `set GOARCH=amd64` 交叉编译；运行时包与产物架构必须一致 |
 
 ---
@@ -315,7 +334,7 @@ trailer = magic "WSPAYLD1"(8) | version(4) | offset(8) | size(8) | sha256前8字
 
 ```js
 window.webshell.window.minimize() / maximize() / close() / toggleFullScreen()
-window.webshell.window.setTitle('x') / isMaximized() / reload()
+window.webshell.window.setTitle('x') / setIcon('D:/icons/busy.png') / isMaximized() / reload()
 window.webshell.app.ping() / quit() / platform
 window.webshell.on(event, handler)
 ```

@@ -53,6 +53,18 @@ func (w *Window) SetTitle(title string) error {
 	return err
 }
 
+// SetIcon 运行时替换窗口图标（标题栏 + 任务栏），png / jpg / ico 都行。
+//
+//	_ = w.SetIcon(filepath.Join(baseDir, "icon-running.png"))
+//
+// Windows / Linux 生效；macOS 上同一调用会改 Dock 图标（win.setIcon 在那边无效）。
+// 传空字符串表示恢复默认图标。只影响这一个窗口 —— 要连托盘/Dock 一起换用 App.SetAppIcon。
+func (w *Window) SetIcon(iconPath string) error {
+	_, err := w.app.do(http.MethodPost, "/v1/windows/"+w.id+"/icon",
+		map[string]any{"icon": absPath(iconPath)})
+	return err
+}
+
 func (w *Window) SetAlwaysOnTop(on bool) error {
 	_, err := w.app.do(http.MethodPost, "/v1/windows/"+w.id+"/always-on-top", map[string]any{"on": on})
 	return err
